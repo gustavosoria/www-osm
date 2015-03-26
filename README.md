@@ -9,7 +9,7 @@ Environment
 * Postgis extension installed and enable
 
 Database
-* import the data available at `db/dump` [*cooming soon* the module for the import from xml and live osm API]
+* import the data available at `db/dump` [*cooming soon* the module for the import from xml and live osm APIs]
 
 Node.js modules required:
 * node-simple-router,`npm install node-simple-router` [as a temporary solution for the routing problem]
