@@ -5,7 +5,7 @@ It provides geodata from an OpenStreetMap local database with the purpose of be 
 ## Prerequisites
 Environment
 * Node.js installed
-* PostgreSQL installed (preferably to the latest stable version)
+* PostgreSQL installed (preferably the latest stable version)
 * Postgis extension installed and enable
 
 Database
