@@ -12,19 +12,19 @@ var pg = require('pg');
  * Username for the database connection
  * @type {string}
  */
-var username = "gustavosoria";
+var username = "required";
 
 /**
  * Password for the database connection
  * @type {string}
  */
-var password = "";
+var password = "required";
 
 /**
  * Name of the database
  * @type {string}
  */
-var database = "osm";
+var database = "required";
 
 /**
  * Connection string for the database
