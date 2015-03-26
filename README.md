@@ -47,6 +47,7 @@ var database = "required";
 * `node/:id`, GET, it returns a node object as JSON with the given identifier. If the identifier is not recognized, then an empty object is returned. Example: `http://localhost:2222/node/9201254`
 * `way/:id`, GET,  it returns a way object as JSON with the given identifier. If the identifier is not recognized, then an empty object is returned. Example: `http://localhost:2222/way/13860002`
 * `relation/:id`, GET, it returns a way object as JSON with the given identifier. If the identifier is not recognized, then an empty object is returned. Example: `http://localhost:2222/relation/4299085`
+* `/search/:lod/:match`, GET, the service searches for a match over the wayName, nodeName and relationName tables with the given level of detail as threshold, returning the objects as JSON list. Partial names are allowed. Example: `/search/15/vigilio` or `/search/15/vigi`
 * `bbox`, POST, it retrieves the elements within given boundary and with the given level of detail.
 
     Post request example:
@@ -59,4 +60,4 @@ var database = "required";
          "lod": 15
          }
     ```
-*`/search/:lod/:match`, GET, the service searches for a match over the wayName, nodeName and relationName tables with the given level of detail as threshold, returning the objects as JSON list. Partial names are allowed. Example: `/search/15/vigilio` or `/search/15/vigi`.
+
