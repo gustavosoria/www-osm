@@ -1,8 +1,12 @@
 /**
- * @author Trilogis
+ * @author Trilogis Srl
+ * @author Gustavo German Soria
  *
  * The boundary object represents the area in which the geometries are displayed.
  */
+
+
+var val = require('./validator');
 
 /**
  * The object which contains the coordinates of a boundary
@@ -13,6 +17,15 @@
  * @returns {{}} The boundary object
  */
 var build = function(latitudeLB, latitudeUB, longitudeLB, longitudeUB) {
+
+    /*
+    validation of the coordinates
+     */
+    val.assertNotUndefined(latitudeLB);
+    val.assertNotUndefined(latitudeUB);
+    val.assertNotUndefined(longitudeLB);
+    val.assertNotUndefined(longitudeUB);
+
     var boundary = {};
     boundary.latitudeLB = latitudeLB;
     boundary.latitudeUB = latitudeUB;

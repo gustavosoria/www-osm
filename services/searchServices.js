@@ -1,55 +1,83 @@
 /**
- * @author Trilogis
+ * @author Trilogis Srl
+ * @author Gustavo German Soria
+ *
+ * Search Service module
  */
-
-/*
- IMPORTS
- */
-var wayTagDao = require('./../dao/way-tag-dao.js');
-var relationTagDao = require('./../dao/relation-tag-dao.js');
-var nodeTagDao = require('./../dao/node-tag-dao.js');
-var responseUtil = require('./../services_util/response.js');
-var tagUtil = require('./../util/way-tag-util.js');
 
 /**
- * Web Services for the search operations
- * @param router
+ * Search controller import
+ * @type {exports}
  */
+var searchController = require('./../controllers/searchController.js');
+
+/**
+ * Response util module
+ * @type {exports}
+ */
+var responseUtil = require('./../services_util/response.js');
+
+/**
+ * Parameters module
+ * @type {exports}
+ */
+var params = require('./../util/params.js');
+
 
 //PUBLIC METHODS
-
 function listen (router){
-    /*
-    The service searches for a match over the wayName, nodeName and relationName tables
-     */
-    router.get('/search/:lod/:match', function(request, response) {
-        /*
-        TODO: the router is no able to recognize parameters that contains a space (encoded or not). Then for tests purposes the spaces have been replaced with an underscore.
-        */
-        var _match = request.params.match.replace("_", " ");
 
-        /*
-        build of the callback object. It initially contains a list of methods
-        to call in sequence during the execution, the match and level of detail value,
-        and finally the response object reference.
-         */
+
+    router.get('/search/line/:lod/:match', function(request, response) {
+        var _match = request.params.match.replace("_", " ");
+        var _lod = request.params.lod;
+
         var _callback =
         {
-          'match'       :   _match,
-          'lod'         :   request.params.lod,
-          'parameter'   :   response,
-          'list' :
-              [   responseUtil.send,
-                  tagUtil.fromResult, nodeTagDao.getTagsByName,
-                  tagUtil.fromResult, relationTagDao.getTagsByName,
-                  tagUtil.fromResult, wayTagDao.getTagsByName
-              ]
+            name          :   _match,
+            lod           :   _lod,
+            params        :   {type: params.LINE},
+            parameter     :   response,
+            list          :
+                [   responseUtil.printNames
+                ]
         };
+        searchController.getByPartialName(_callback);
+    });
 
-        /*
-        call the next method
-         */
-        _callback.list.pop()(_callback);
+    router.get('/search/point/:lod/:match', function(request, response) {
+        var _match = request.params.match.replace("_", " ");
+        var _lod = request.params.lod;
+
+        var _callback =
+        {
+            name          :   _match,
+            lod           :   _lod,
+            params        :   {type: params.POINT},
+            parameter     :   response,
+            list          :
+                [   responseUtil.printNames
+                ]
+        };
+        searchController.getByPartialName(_callback);
+    });
+
+
+    router.get('/search/polygon/:lod/:match', function(request, response) {
+        var _match = request.params.match.replace("_", " ");
+        var _lod = request.params.lod;
+
+        var _callback =
+        {
+            name          :   _match,
+            lod           :   _lod,
+            params        :   {type: params.POLYGON},
+            parameter     :   response,
+            list          :
+                [   responseUtil.printNames
+                ]
+        };
+        searchController.getByPartialName(_callback);
     });
 }
 

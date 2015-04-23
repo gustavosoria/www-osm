@@ -1,41 +1,42 @@
 /**
- * @author Trilogis
+ * @author Trilogis Srl
+ * @author Gustavo German Soria
+ *
+ * Way DAO queries module
  */
-
-/*
-IMPORTS
- */
-var way = require('./../models/way.js');
-var wayTag = require('./../models/wayTag.js');
-var wayTagName = require('./../models/wayTagName.js');
-var wayType = require('./../models/wayType.js');
 
 /**
- * It permits to retrieve a Way object with its properties and tags by providing its identifier.
- * It requires the following parameters:
- * 1: bigint -> way's identifier.
+ * It retrieves a polygon object with its properties and tags by providing its identifier.
  *
- * @returns {string} the query
+ * It requires the following parameters:
+ *
+ * 1: bigint -> identifier.
+ *
+ * @returns {string} the query string
  */
-var getWayById = function(){
-    var _query = "" +
-        "SELECT "+way.model.wayId+", to_json(array_agg("+wayType.model.tablename+")) as type, " +
-            "ST_AsGeoJSON("+way.model.geom+") as geom, to_json(array_agg("+wayTag.model.tablename+")) AS tags, " +
-            "to_json(array_agg("+wayTagName.model.tablename+")) AS names " +
-        "FROM ("+way.model.tablename+" NATURAL JOIN "+wayType.model.tablename+") " +
-            "LEFT JOIN "+wayTag.model.tablename+" " +
-                "ON "+way.model.wayId+" = "+wayTag.model.parentId+" " +
-            "LEFT JOIN "+wayTagName.model.tablename+" " +
-                "ON "+way.model.wayId+" = "+wayTagName.model.parentId+"  " +
-        "WHERE "+way.model.wayId+" = $1::bigint " +
-        "GROUP BY "+way.model.wayId+" " +
-        "LIMIT 1";
-
+var getPolygonByOsmId = function(){
+    var _query = "SELECT array_to_json(array_agg(pol)) as way, ST_AsGeoJSON(way) as geom FROM (planet_osm_polygon NATURAL JOIN polygon_style_properties) as pol WHERE osm_id = $1::bigint AND is_deleted = false GROUP BY way";
     return _query;
 }
 
 /**
- * It permits to retrieve all the ways (each of them with its properties and tags included) by providing a bounding box.
+ * It retrieves a polyline object with its properties and tags by providing its identifier.
+ *
+ * It requires the following parameters:
+ *
+ * 1: bigint -> identifier.
+ *
+ * @returns {string} the query string
+ */
+var getPolylineByOsmId = function(){
+    var _query = "SELECT array_to_json(array_agg(pol)) as way, ST_AsGeoJSON(way) as geom FROM (planet_osm_line NATURAL JOIN line_style_properties) as pol WHERE osm_id = $1::bigint AND is_deleted = false GROUP BY way "+
+                 "UNION ALL "+
+                 "SELECT array_to_json(array_agg(pol)) as way, ST_AsGeoJSON(way) as geom FROM (planet_osm_roads NATURAL JOIN line_style_properties) as pol WHERE osm_id = $1::bigint AND is_deleted = false GROUP BY way";
+    return _query;
+}
+
+/**
+ * It retrieves polygons (each of them with its properties and tags included) by providing a bounding box.
  * If some parts of the geometries are not in the selected bounding box, then the geometries are cut and only the parts
  * within the bounding box are maintained.
  *
@@ -48,31 +49,20 @@ var getWayById = function(){
  *
  * @returns {string} the query
  */
-var getWaysByBBox = function(){
-    var _query = "" +
-        "SELECT "+way.model.wayId+", to_json(array_agg("+wayType.model.tablename+")) as type, " +
-            "to_json(array_agg("+wayTag.model.tablename+")) AS tags, " +
-            "ST_AsGeoJSON(ST_FlipCoordinates("+way.model.geom+"), 7) as geom, " +
-            "to_json(array_agg("+wayTagName.model.tablename+")) as names " +
-        "FROM (SELECT * " +
-            "FROM (" +
-                "SELECT "+way.model.wayId+", "+way.model.typeId+", ST_Intersection("+way.model.geomT+", bbox.geom) as geom " +
-            "FROM " +
-            "ways," +
-                " (SELECT ST_SetSRID(ST_MakeBox2d(ST_MakePoint($1::float, $2::float)," +
-                " ST_MakePoint($3::float, $4::float)), 4326) as geom) as bbox " +
-            "WHERE ST_Intersects("+way.model.geomT+", bbox.geom)" +
-            ") fc ) as t NATURAL JOIN "+wayType.model.tablename+" LEFT JOIN "+wayTag.model.tablename+" " +
-                "ON "+way.model.wayId+" = "+wayTag.model.parentId+" LEFT JOIN "+wayTagName.model.tablename+" " +
-                "ON "+way.model.wayId+" = "+wayTagName.model.parentId+" " +
-        "WHERE "+wayType.model.lod+" <= $5::integer "+
-        "GROUP BY way_id, geom";
+var getPolygonsByBbox = function(){
+    var _query = "SELECT *, ST_AsGeoJSON(geomm) as geom " +
+        "FROM (	SELECT * " +
+        "FROM (	SELECT osm_id, type_id, ST_Intersection(planet_osm_polygon.way, bbox.geom) as geomm " +
+        "FROM planet_osm_polygon, (SELECT ST_SetSRID(ST_MakeBox2d(ST_MakePoint($1::float, $2::float), ST_MakePoint($3::float, $4::float)), 4326) as geom) as bbox " +
+    "WHERE ST_Intersects(planet_osm_polygon.way, bbox.geom) AND is_deleted = false) " +
+    "fc ) as t NATURAL JOIN polygon_style_properties";
     return _query;
 }
 
 /**
- * It permits to retrieve all the ways (each of them with its properties and tags included) by providing a bounding box.
- * If a part of a geometry is inside the bounding box, then the whole geometry is retrieved without cut it.
+ * It retrieves polylines (each of them with its properties and tags included) by providing a bounding box.
+ * If some parts of the geometries are not in the selected bounding box, then the geometries are cut and only the parts
+ * within the bounding box are maintained.
  *
  * It requires the following parameters:
  * 1: bigint    ->  latitude lower bound;
@@ -83,14 +73,16 @@ var getWaysByBBox = function(){
  *
  * @returns {string} the query
  */
-var getWaysByBBox_no_cut = function(){
-    var _query = "" +
-        "SELECT "+way.model.wayId+", to_json(array_agg("+wayType.model.tablename+")) as type, ST_AsGeoJSON(ST_FlipCoordinates("+way.model.geom+")) as geom, to_json(array_agg("+wayTag.model.tablename+")) AS tags, to_json(array_agg("+wayTagName.model.tablename+")) AS names " +
-        "FROM ("+way.model.tablename+" NATURAL JOIN "+wayType.model.tablename+") LEFT JOIN "+wayTag.model.tablename+" ON "+way.model.wayId+" = "+wayTag.model.parentId+" LEFT JOIN "+wayTagName.model.tablename+" ON "+way.model.wayId+" = "+wayTagName.model.parentId+"  " +
-        "WHERE "+wayType.model.lod+" <= $5::float AND "+way.model.geom+" && ST_MakeEnvelope($1::float, $2::float, $3::float, $4::float, 4326) " +
-        "GROUP BY "+way.model.wayId;
+var getPolylinesByBbox = function(){
+
+    var _query = "SELECT *, ST_AsGeoJSON(geomm) as geom FROM (SELECT * FROM (SELECT osm_id, type_id, ST_Intersection(planet_osm_roads.way, bbox.geom) as geomm FROM planet_osm_roads, (SELECT ST_SetSRID(ST_MakeBox2d(ST_MakePoint($1::float, $2::float), ST_MakePoint($3::float, $4::float)), 4326) as geom) as bbox WHERE is_deleted = false AND ST_Intersects(planet_osm_roads.way, bbox.geom)) fc ) as t NATURAL JOIN line_style_properties " +
+    "UNION " +
+    "SELECT *, ST_AsGeoJSON(geomm) as geom FROM (SELECT * FROM (SELECT osm_id, type_id, ST_Intersection(planet_osm_line.way, bbox.geom) as geomm FROM planet_osm_line, (SELECT ST_SetSRID(ST_MakeBox2d(ST_MakePoint($1::float, $2::float), ST_MakePoint($3::float, $4::float)), 4326) as geom) as bbox WHERE is_deleted = false AND ST_Intersects(planet_osm_line.way, bbox.geom)) fc ) as t NATURAL JOIN line_style_properties";
+
     return _query;
 }
 
-module.exports.getWayById = getWayById;
-module.exports.getWaysByBBox = getWaysByBBox;
+module.exports.getPolygonByOsmId = getPolygonByOsmId;
+module.exports.getPolylineByOsmId = getPolylineByOsmId;
+module.exports.getPolygonsByBbox = getPolygonsByBbox;
+module.exports.getPolylinesByBbox = getPolylinesByBbox;
